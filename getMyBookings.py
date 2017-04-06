@@ -98,9 +98,10 @@ def main():
                 date, start, dest, price = parse.parseBooking(filename)
                 file.write(date+",'"+start+"','"+dest+"',"+price+"\n")
             except Exception as e:
-                print("Error processing " + filename)
+                print
+                print(" ---> Error processing " + filename)
                 print(e)
-                sys.exit()
+                print
 
         else:
             print("Msg " + str(m['id']) + " doesn't seem to have an attachment.")
