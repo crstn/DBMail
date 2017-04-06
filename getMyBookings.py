@@ -71,7 +71,7 @@ def main():
     # write head for the output CSV
 
     file = codecs.open("bookings.csv", "w", "utf-8")
-    file.write(u'Date,From,To,Price\n')
+    file.write(u'Date,From,To,Ticket,Price\n')
     file.close()
 
     # go through all messages, download and parse the attached PDF for each
@@ -94,14 +94,16 @@ def main():
                 with open(filename, 'w') as f:
                     f.write(file_data)
 
+
             try:
                 date, start, dest, price = parse.parseBooking(filename)
-                file.write(date+",'"+start+"','"+dest+"',"+price+"\n")
+                file.write(date + ",'" + start + "','" + dest + "','" + filename + "'," + price + "\n")
             except Exception as e:
-                print
-                print(" ---> Error processing " + filename)
+                print("Error processing " +filename)
                 print(e)
-                print
+                file.write(",,,'" + filename + "',\n")
+
+
 
         else:
             print("Msg " + str(m['id']) + " doesn't seem to have an attachment.")
