@@ -1,11 +1,19 @@
 from __future__ import print_function
 import httplib2
 import os
+import pprint
+import sys
+import base64
 
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
+
+# script will fetch all bookins since this day. Set to empty string to get ALL bookings
+startdate = ' after:2016/04/06'
+# startdate = ''
+
 
 try:
     import argparse
@@ -58,15 +66,21 @@ def main():
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
 
-    results = service.users().labels().list(userId='me').execute()
-    labels = results.get('labels', [])
+    messages = service.users().messages().list(userId='me', q='from:buchungsbestaetigung@bahn.de'+startdate).execute()
+    # print (str(messages['resultSizeEstimate']) + " bookings found. Downloading PDFs...")
 
-    if not labels:
-        print('No labels found.')
-    else:
-      print('Labels:')
-      for label in labels:
-        print(label['name'])
+    for m in messages['messages']:
+        msg = service.users().messages().get(userId='me', id=m['id']).execute()
+
+        attachmentID = msg['payload']['parts'][0]['body']['attachmentId']
+
+        response = service.users().messages().attachments().get(userId='me', id=attachmentID, messageId=m['id']).execute()
+        file_data = base64.urlsafe_b64decode(response['data'].encode('UTF-8'))
+
+        with open('test.pdf', 'w') as f:
+            f.write(file_data)
+
+        sys.exit()
 
 
 if __name__ == '__main__':
