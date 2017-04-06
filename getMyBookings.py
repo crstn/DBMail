@@ -1,9 +1,13 @@
 from __future__ import print_function
 import httplib2
 import os
+import os.path
 import pprint
 import sys
 import base64
+import slate
+import parse
+import codecs
 
 from apiclient import discovery
 from oauth2client import client
@@ -57,30 +61,53 @@ def get_credentials():
     return credentials
 
 def main():
-    """Shows basic usage of the Gmail API.
-
-    Creates a Gmail API service object and outputs a list of label names
-    of the user's Gmail account.
-    """
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
 
+    # fetch all messages from DB:
     messages = service.users().messages().list(userId='me', q='from:buchungsbestaetigung@bahn.de'+startdate).execute()
-    # print (str(messages['resultSizeEstimate']) + " bookings found. Downloading PDFs...")
 
+    # write head for the output CSV
+
+    file = codecs.open("bookings.csv", "w", "utf-8")
+    file.write(u'Date,From,To,Price\n')
+    file.close()
+
+    # go through all messages, download and parse the attached PDF for each
+    file = codecs.open("bookings.csv", "a", "utf-8")
     for m in messages['messages']:
         msg = service.users().messages().get(userId='me', id=m['id']).execute()
 
-        attachmentID = msg['payload']['parts'][0]['body']['attachmentId']
+        body = msg['payload']['parts'][0]['body']
+        if('attachmentId') in body:
+            attachmentID = body['attachmentId']
+            filename = msg['payload']['parts'][0]['filename']
 
-        response = service.users().messages().attachments().get(userId='me', id=attachmentID, messageId=m['id']).execute()
-        file_data = base64.urlsafe_b64decode(response['data'].encode('UTF-8'))
+            # only download the PDF if we don't have it yet:
+            if os.path.exists(filename):
+                print (filename + " alread downloaded")
+            else:
+                response = service.users().messages().attachments().get(userId='me', id=attachmentID, messageId=m['id']).execute()
+                file_data = base64.urlsafe_b64decode(response['data'].encode('UTF-8'))
 
-        with open('test.pdf', 'w') as f:
-            f.write(file_data)
+                with open(filename, 'w') as f:
+                    f.write(file_data)
 
-        sys.exit()
+            try:
+                date, start, dest, price = parse.parseBooking(filename)
+                file.write(date+",'"+start+"','"+dest+"',"+price+"\n")
+            except Exception as e:
+                print("Error processing " + filename)
+                print(e)
+                sys.exit()
+
+        else:
+            print("Msg " + str(m['id']) + " doesn't seem to have an attachment.")
+
+
+    file.close()
+
 
 
 if __name__ == '__main__':
