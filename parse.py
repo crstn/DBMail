@@ -54,9 +54,9 @@ def parseBooking(pdffile):
         dest = dest.strip().decode("UTF-8")
 
         # price is in the same place in both layouts
-        parts = re.split('\nPreis\n\n', text)
-        parts = re.split('\n', parts[1])
-        price = parts[0]
+        parts = re.split('MwSt', text)
+        parts = re.split('\n', parts[0])
+        price = parts[len(parts)-3]
         price = price[:-3].replace(',','.')
 
 
